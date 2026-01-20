@@ -106,6 +106,10 @@ int aesd_init_module(void)
      * TODO: initialize the AESD specific portion of the device
      */
 
+	// Start of the assignment TODO code
+	mutex_init(&aesd_device.lock); // Set the mutex lock
+	// End of the assignment TODO code
+
     result = aesd_setup_cdev(&aesd_device);
 
     if( result ) {
@@ -124,8 +128,11 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
-
-    unregister_chrdev_region(devno, 1);
+	// Start of the assignment TODO code
+	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now
+	// End of the assignment TODO code
+    
+	unregister_chrdev_region(devno, 1);
 }
 
 
