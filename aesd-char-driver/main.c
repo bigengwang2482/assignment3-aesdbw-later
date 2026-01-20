@@ -32,6 +32,11 @@ int aesd_open(struct inode *inode, struct file *filp)
     /**
      * TODO: handle open
      */
+	// Start of the assignment TODO code
+	struct aesd_dev *dev; /* device information */
+    dev = container_of(inode->i_cdev, struct aesd_dev, cdev); /* use inode i_cdev to find the start and check for pointer to cdev in the aesd_dev */
+	filp->private_data = dev; /* that's it for assign8 */
+	// End of the assignment TODO code
     return 0;
 }
 
