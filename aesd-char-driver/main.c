@@ -57,6 +57,16 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
     /**
      * TODO: handle read
      */
+	// Start of the assignment TODO code
+	struct aesd_dev *dev = filp->private_data; /* that's it for assign8 */
+	if (mutex_lock_interruptible(&dev->lock))
+		return -ERESTARTSYS;
+		// DO ACTUAL READING HERE
+	if (copy_to_user(buf, dev->buf, count)) {
+		retval = -EFAULT;
+		mutex_unlock(&dev->lock);	
+	}
+	// End of the assignment TODO code
     return retval;
 }
 
