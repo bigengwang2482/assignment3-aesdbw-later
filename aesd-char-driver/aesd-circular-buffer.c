@@ -61,7 +61,7 @@ const char *aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
     /**
     * TODO: implement per description
     */
-	struct aesd_buffer_entry *entry_backup = buffer->entry[buffer->in_offs];	
+	struct aesd_buffer_entry *entry_backup = &buffer->entry[buffer->in_offs];	
 	buffer->entry[buffer->in_offs] = *add_entry; // write or overwrites the oldest entry
 	// check if the current in_offs is the last one
 	if (buffer->in_offs == (AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED-1)) {
@@ -73,7 +73,7 @@ const char *aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
 	}
 	if (buffer->full == true) { // Buffer already full, advances buffer->out_offs to the new start location
 		buffer->out_offs = buffer->in_offs;
-		return entry_backup; // return this entry to be replace for dynamic removal
+		return entry_backup->buffptr; // return this entry to be replace for dynamic removal
 	}	
 	return NULL; // By default
 }

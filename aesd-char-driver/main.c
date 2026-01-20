@@ -63,7 +63,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 		return -ERESTARTSYS;
 	// DO ACTUAL READING HERE, WITH THE PARTIAL READ(NOT FULL COUNTS)
 	size_t offset_rtn=0;
-	struct aesd_buffer_entry *read_entry = aesd_circular_buffer_find_entry_offset_for_fpos(&dev->buf, f_pos, &offset_rtn); 
+	struct aesd_buffer_entry *read_entry = aesd_circular_buffer_find_entry_offset_for_fpos(dev->buf, f_pos, &offset_rtn); 
 	if (read_entry == NULL) {
 		return 0;
 	}
