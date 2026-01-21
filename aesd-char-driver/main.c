@@ -118,7 +118,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		PDEBUG("The overwritten buf ptr is not NULL. FREE it now!");
 		kfree(overwritten_buf_ptr);	
 	}	
-	return retval;
+	PDEBUG("Done write! unlock now and return with value %lld.", retval);
+	goto out;
 
 	out:
 		mutex_unlock(&dev->lock);
