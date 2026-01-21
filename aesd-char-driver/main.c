@@ -72,9 +72,9 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 			retval = -EFAULT;			
 		}	
 		else {
-			PDEBUG("Found the entry with offset %lld", *f_pos);
-			*f_pos += retval;// updated the f_pos to the begining of next entry	
+			PDEBUG("Found the entry with offset %lld", *f_pos);	
 			retval = read_entry->size - offset_rtn + 1;
+			*f_pos += retval;// updated the f_pos to the begining of next entry
 			PDEBUG("Update the next entry with offset %lld after read in %lld in", *f_pos, retval);
 			return retval;
 		}
