@@ -103,7 +103,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		goto out;	
 	}
 	PDEBUG("added %zu bytes from user",count);
-	const char *overwritten_buf_ptr;	
+	const char *overwritten_buf_ptr;		
 	overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, &entry);	
 	retval = count;
 	PDEBUG("Added the entry to the buffer.");
@@ -163,6 +163,7 @@ int aesd_init_module(void)
      */
 
 	// Start of the assignment TODO code
+	aesd_circular_buffer_init(aesd_device.buf); //temporarily do static alloc
 	mutex_init(&aesd_device.lock); // Set the mutex lock
 	// End of the assignment TODO code
 
