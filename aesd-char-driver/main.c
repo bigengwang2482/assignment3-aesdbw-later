@@ -104,6 +104,10 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	}
 	PDEBUG("added %zu bytes from user",count);
 	const char *overwritten_buf_ptr;		
+	if (dev->buf == NULL) {
+		PDEBUG("Init buffer memory dynamically.");
+		dev->buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
+	}
 	overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, &entry);	
 	retval = count;
 	PDEBUG("Added the entry to the buffer.");
@@ -162,8 +166,7 @@ int aesd_init_module(void)
      * TODO: initialize the AESD specific portion of the device
      */
 
-	// Start of the assignment TODO code
-	aesd_circular_buffer_init(aesd_device.buf); //temporarily do static alloc
+	// Start of the assignment TODO code	
 	mutex_init(&aesd_device.lock); // Set the mutex lock
 	// End of the assignment TODO code
 
@@ -187,6 +190,7 @@ void aesd_cleanup_module(void)
      */
 	// Start of the assignment TODO code
 	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now
+	kfree(&aesd_device.buf);
 	// End of the assignment TODO code
     
 	unregister_chrdev_region(devno, 1);
