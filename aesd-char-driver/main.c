@@ -58,13 +58,13 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
      * TODO: handle read
      */
 	// Start of the assignment TODO code
-	struct aesd_dev *dev = filp->private_data; 
-	if (mutex_lock_interruptible(&dev->lock))
-		return -ERESTARTSYS;
+	struct aesd_dev *dev = filp->private_data; 	
 	// DO ACTUAL READING HERE, WITH THE PARTIAL READ(NOT FULL COUNTS)
 	size_t offset_rtn=0;
+	PDEBUG("Find reading entry before reading from buffer...");
 	struct aesd_buffer_entry *read_entry = aesd_circular_buffer_find_entry_offset_for_fpos(dev->buf, *f_pos, &offset_rtn); 
 	if (read_entry == NULL) {
+		PDEBUG("Unable to find the entry with offset %lld", *f_pos);
 		return 0;
 	}
 	else{
@@ -72,8 +72,10 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 			retval = -EFAULT;			
 		}	
 		else {
-			*f_pos += retval;// updated the f_pos to the begining of next entry
+			PDEBUG("Found the entry with offset %lld", *f_pos);
+			*f_pos += retval;// updated the f_pos to the begining of next entry	
 			retval = read_entry->size - offset_rtn + 1;
+			PDEBUG("Update the next entry with offset %lld after read in %lld in", *f_pos, retval);
 			return retval;
 		}
 	}
