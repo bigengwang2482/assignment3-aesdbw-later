@@ -95,6 +95,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
 	if (mutex_lock_interruptible(&dev->lock)) // Get the mutex for protection
 		return -ERESTARTSYS;
+	PDEBUG("Obtained mutex for write.");
 	entry.buffptr = kmalloc(count * sizeof(char *), GFP_KERNEL); 	
 	entry.size=count;
 	if (copy_from_user(entry.buffptr, buf, count)) {
@@ -105,6 +106,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	const char *overwritten_buf_ptr;	
 	overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, &entry);	
 	retval = count;
+	PDEBUG("Added the entry to the buffer.");
 	
 	if (overwritten_buf_ptr != NULL) {
 		PDEBUG("The overwritten buf ptr is not NULL. FREE it now!");
