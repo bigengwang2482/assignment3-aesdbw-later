@@ -63,17 +63,19 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 	size_t offset_rtn=0;
 	PDEBUG("Find reading entry before reading from buffer...");
 	struct aesd_buffer_entry *read_entry = aesd_circular_buffer_find_entry_offset_for_fpos(dev->buf, *f_pos, &offset_rtn); 
+	PDEBUG("Get offset_rtn %lld.", offset_rtn);
 	if (read_entry == NULL) {
 		PDEBUG("Unable to find the entry with offset %lld", *f_pos);
 		return 0;
 	}
 	else{
+		retval = read_entry->size - offset_rtn;
+		PDEBUG("Found the entry with offset %lld and copy to user with size %lld.", *f_pos, retval);
 		if (copy_to_user(buf, read_entry->buffptr+offset_rtn, retval)) {	
 			retval = -EFAULT;			
 		}	
 		else {
-			PDEBUG("Found the entry with offset %lld", *f_pos);	
-			retval = read_entry->size - offset_rtn + 1;
+			PDEBUG("copy_to_user successfully.");		
 			*f_pos += retval;// updated the f_pos to the begining of next entry
 			PDEBUG("Update the next entry with offset %lld after read in %lld in", *f_pos, retval);
 			return retval;
