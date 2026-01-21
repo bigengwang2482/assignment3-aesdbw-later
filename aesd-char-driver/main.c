@@ -101,11 +101,16 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		retval = -EFAULT;
 		goto out;	
 	}
+	PDEBUG("added %zu bytes from user",count);
 	const char *overwritten_buf_ptr;	
 	overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, &entry);	
+	retval = count;
+	
 	if (overwritten_buf_ptr != NULL) {
+		PDEBUG("The overwritten buf ptr is not NULL. FREE it now!");
 		kfree(overwritten_buf_ptr);	
 	}	
+	return retval;
 
 	out:
 		mutex_unlock(&dev->lock);
