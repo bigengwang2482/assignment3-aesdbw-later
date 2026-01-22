@@ -137,7 +137,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 			dev->buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
 		}
 		overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, dev->working_buf_etr);	
-		retval = count;
+		retval = dev->working_done_count;
 		PDEBUG("Added the entry to the buffer.");
 		
 		if (overwritten_buf_ptr != NULL) {
@@ -146,6 +146,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		}	
 		PDEBUG("Reset pointer to working entry to NULL!");
 		dev->working_buf_etr = NULL;	
+		PDEBUG("Reset the working done  count to 0.");
+		dev->working_done_count = 0;
 		PDEBUG("Done write! unlock now and return with value %lld.", retval);
 		goto out;
 	}
@@ -221,7 +223,13 @@ void aesd_cleanup_module(void)
      */
 	// Start of the assignment TODO code
 	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now
-	kfree(&aesd_device.buf);
+	//kfree(&aesd_device.buf);
+	uint8_t index;
+ 	struct aesd_circular_buffer buffer;
+ 	struct aesd_buffer_entry *entry;
+ 	AESD_CIRCULAR_BUFFER_FOREACH(entry,aesd_device.buf,index) {
+       kfree(entry->buffptr);
+	}
 	// End of the assignment TODO code
     
 	unregister_chrdev_region(devno, 1);
