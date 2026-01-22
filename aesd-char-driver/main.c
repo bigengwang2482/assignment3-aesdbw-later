@@ -110,6 +110,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		entry->size=count;
 	}
 	else { // having a previous entry
+		PDEBUG("Continuing a previous working entry for writing. Realloc size %lld from %lld by adding .",dev->working_done_count + count,dev->working_done_count,count);
 		struct aesd_buffer_entry *entry;
 		entry = dev->working_buf_etr; // get an short name for the working entry
 		entry->buffptr = krealloc(entry->buffptr, (dev->working_done_count + count) * sizeof(char *), GFP_KERNEL); // glue new memeory to the buf array
