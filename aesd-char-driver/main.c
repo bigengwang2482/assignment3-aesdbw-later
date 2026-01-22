@@ -59,28 +59,37 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
      */
 	// Start of the assignment TODO code
 	struct aesd_dev *dev = filp->private_data; 	
+	if (mutex_lock_interruptible(&dev->lock)) // Get the mutex for protection
+		return -ERESTARTSYS;
+	PDEBUG("Obtained mutex for read.");
 	// DO ACTUAL READING HERE, WITH THE PARTIAL READ(NOT FULL COUNTS)
 	size_t offset_rtn=0;
 	PDEBUG("Find reading entry before reading from buffer...");
 	struct aesd_buffer_entry *read_entry = aesd_circular_buffer_find_entry_offset_for_fpos(dev->buf, *f_pos, &offset_rtn); 
 	PDEBUG("Get offset_rtn %lld.", offset_rtn);
 	if (read_entry == NULL) {
-		PDEBUG("Unable to find the entry with offset %lld", *f_pos);
-		return 0;
+		PDEBUG("Unable to find the entry with offset %lld, end of file(no data read)", *f_pos);
+		retval = 0;
+		goto out;
 	}
 	else{
 		retval = read_entry->size - offset_rtn;
 		PDEBUG("Found the entry with offset %lld and copy to user with size %lld.", *f_pos, retval);
 		if (copy_to_user(buf, read_entry->buffptr+offset_rtn, retval)) {	
+			PDEBUG("Copy to user failed.");
 			retval = -EFAULT;			
+			goto out;
 		}	
 		else {
 			PDEBUG("copy_to_user successfully.");		
 			*f_pos += retval;// updated the f_pos to the begining of next entry
 			PDEBUG("Update the next entry with offset %lld after read in %lld in", *f_pos, retval);
-			return retval;
+			goto out;
 		}
 	}
+	out:
+		mutex_unlock(&dev->lock);
+		return retval;
 	// End of the assignment TODO code
     return retval;
 }
