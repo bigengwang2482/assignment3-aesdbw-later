@@ -237,11 +237,10 @@ void aesd_cleanup_module(void)
 	// Start of the assignment TODO code
 	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now
 	//kfree(&aesd_device.buf);
-	uint8_t index;
- 	struct aesd_circular_buffer buffer;
- 	struct aesd_buffer_entry *entry;
- 	AESD_CIRCULAR_BUFFER_FOREACH(entry,aesd_device.buf,index) {
-       kfree(entry->buffptr);
+	uint8_t index;	
+ 	struct aesd_buffer_entry *free_entry;
+ 	AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
+       kfree(free_entry->buffptr);
 	}
 	// End of the assignment TODO code
     
