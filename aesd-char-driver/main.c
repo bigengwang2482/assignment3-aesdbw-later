@@ -94,35 +94,61 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
      * TODO: handle write
      */
 	// Start of the assignment TODO code
-	struct aesd_dev *dev = filp->private_data; 
-	struct aesd_buffer_entry entry;
+	struct aesd_dev *dev = filp->private_data; 	
 
 	if (mutex_lock_interruptible(&dev->lock)) // Get the mutex for protection
 		return -ERESTARTSYS;
 	PDEBUG("Obtained mutex for write.");
-	entry.buffptr = kmalloc(count * sizeof(char *), GFP_KERNEL); 	
-	entry.size=count;
-	if (copy_from_user(entry.buffptr, buf, count)) {
+	// check or set the working entry to be the currenty entry
+	bool ready_to_add_entry = false;
+	if (dev->working_buf_etr == NULL) { // if having no working buf entry for appending, create new one
+		struct aesd_buffer_entry *entry;
+		entry = kmalloc(sizeof(struct aesd_buffer_entry), GFP_KERNEL);
+		dev->working_buf_etr = entry;
+		PDEBUG("Creating a new working entry for writing. Alloc size %lld.", count);
+		entry->buffptr = kmalloc(count * sizeof(char *), GFP_KERNEL); 	
+		entry->size=count;
+	}
+	else { // having a previous entry
+		struct aesd_buffer_entry *entry;
+		entry = dev->working_buf_etr; // get an short name for the working entry
+		entry->buffptr = krealloc(entry->buffptr, (dev->working_done_count + count) * sizeof(char *), GFP_KERNEL); // glue new memeory to the buf array
+	}
+
+	if (copy_from_user(dev->working_buf_etr->buffptr+dev->working_done_count, buf, count)) {
 		retval = -EFAULT;
 		goto out;	
 	}
 	PDEBUG("added %zu bytes from user",count);
-	const char *overwritten_buf_ptr;		
-	if (dev->buf == NULL) {
-		PDEBUG("Init buffer memory dynamically.");
-		dev->buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
+	dev->working_done_count += count;
+	PDEBUG("updated working done count to %lld.", dev->working_done_count);
+	if (dev->working_buf_etr->buffptr[dev->working_done_count-1] == '\n') {
+		PDEBUG("Found the end of the write command. Ready to write the entry.");
+		ready_to_add_entry = true;
 	}
-	overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, &entry);	
-	retval = count;
-	PDEBUG("Added the entry to the buffer.");
-	
-	if (overwritten_buf_ptr != NULL) {
-		PDEBUG("The overwritten buf ptr is not NULL. FREE it now!");
-		kfree(overwritten_buf_ptr);	
-	}	
-	PDEBUG("Done write! unlock now and return with value %lld.", retval);
-	goto out;
-
+	else {
+		PDEBUG("Found the end of the write command. Ready to write the entry.");
+	}
+	// Now add the finished entry to the circular buffer
+	if (ready_to_add_entry) {
+		const char *overwritten_buf_ptr;		
+		if (dev->buf == NULL) {
+			PDEBUG("Init buffer memory dynamically.");
+			dev->buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
+		}
+		overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, dev->working_buf_etr);	
+		retval = count;
+		PDEBUG("Added the entry to the buffer.");
+		
+		if (overwritten_buf_ptr != NULL) {
+			PDEBUG("The overwritten buf ptr is not NULL. FREE it now!");
+			kfree(overwritten_buf_ptr);	
+		}	
+		PDEBUG("Reset pointer to working entry to NULL!");
+		dev->working_buf_etr = NULL;	
+		PDEBUG("Done write! unlock now and return with value %lld.", retval);
+		goto out;
+	}
 	out:
 		mutex_unlock(&dev->lock);
 		return retval;
