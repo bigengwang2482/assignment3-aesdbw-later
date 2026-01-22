@@ -105,9 +105,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		struct aesd_buffer_entry *entry;
 		entry = kmalloc(sizeof(struct aesd_buffer_entry), GFP_KERNEL);
 		dev->working_buf_etr = entry;
-		PDEBUG("Creating a new working entry for writing. Alloc size %lld.", count);
-		entry->buffptr = kmalloc(count * sizeof(char *), GFP_KERNEL); 	
-		entry->size=count;
+		PDEBUG("Creating a new working entry for writing. Alloc size %lld.", count); 
+		entry->buffptr = kmalloc((count) * sizeof(char *), GFP_KERNEL); 	
+		entry->size=(count+1);
 	}
 	else { // having a previous entry
 		PDEBUG("Continuing a previous working entry for writing. Realloc size %lld from %lld by adding .",dev->working_done_count + count,dev->working_done_count,count);
@@ -128,7 +128,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		ready_to_add_entry = true;
 	}
 	else {
-		PDEBUG("Found the end of the write command. Ready to write the entry.");
+		PDEBUG("Didn't find the end of the write command. Keep waiting for new write to the entry.");
+		retval = dev->working_done_count; 
+		goto out;
 	}
 	// Now add the finished entry to the circular buffer
 	if (ready_to_add_entry) {
