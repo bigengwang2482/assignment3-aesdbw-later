@@ -156,28 +156,44 @@ void* threadfunc(void* thread_param)
 	}
 	pthread_mutex_unlock(thrd_mutex); // release mutex lock so other threads may work
 	// Load full content of /var/tmp/aesdsocketdata to client, and send back to client
-	
-	file = fopen(output_path, "rb");// use append mode	
-	if (fseek(file,0, SEEK_END)	 != 0) {
-		fclose(file);
-		return NULL;
 
-	}
-	
-	long file_size = ftell(file);
-	if (file_size == -1) {
+	#ifdef USE_AESD_CHAR_DEVICE	
+		int read_size=0;	
+		int total_read = 0;
+		FILE* file_for_read;
+		bytes_buffer = (char*) malloc(sizeof(char) * buffer_len);
+		file_for_read = fopen(output_path,"rb");
+		while (fgets(bytes_buffer+total_read, buffer_len, file_for_read)) { //for the device, use partial read mode	
+			read_size = strlen(bytes_buffer)-total_read; // the read size is the difference
+			printf("Read in %d chars.", read_size);
+			total_read = strlen(bytes_buffer); // updated the total read.
+		}
+		fclose(file_for_read);	
+		buffer_len = total_read; 
+
+	#else
+		file = fopen(output_path, "rb");// use append mode	
+		if (fseek(file,0, SEEK_END)	 != 0) {
+			fclose(file);
+			return NULL;
+
+		}
+		
+		long file_size = ftell(file);
+		if (file_size == -1) {
+			fclose(file);
+			return NULL;
+		}
+		buffer_len = file_size;
+		if (bytes_buffer != NULL) {	
+			free(bytes_buffer);
+			bytes_buffer = NULL;	
+		}
+		bytes_buffer = (char*) malloc(sizeof(char) * buffer_len);
+		fseek(file, 0, SEEK_SET);
+		fread(bytes_buffer, sizeof(char), file_size, file);
 		fclose(file);
-		return NULL;
-	}
-	buffer_len = file_size;
-	if (bytes_buffer != NULL) {	
-		free(bytes_buffer);
-		bytes_buffer = NULL;	
-	}
-	bytes_buffer = (char*) malloc(sizeof(char) * buffer_len);
-	fseek(file, 0, SEEK_SET);
-	fread(bytes_buffer, sizeof(char), file_size, file);
-	fclose(file);
+	#endif
 					
 	// Send the buffer to client
 	send(thread_func_args->acceptedfd, bytes_buffer, buffer_len, 0);	
