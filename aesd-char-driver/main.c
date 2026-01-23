@@ -139,7 +139,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	}
 	else {
 		PDEBUG("Didn't find the end of the write command. Keep waiting for new write to the entry.");
-		retval = dev->working_done_count; 
+		retval = count;//dev->working_done_count; 
 		goto out;
 	}
 	// Now add the finished entry to the circular buffer
@@ -150,7 +150,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 			dev->buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
 		}
 		overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, dev->working_buf_etr);	
-		retval = dev->working_done_count;
+		retval = count;//dev->working_done_count;
 		PDEBUG("Added the entry to the buffer.");
 		
 		if (overwritten_buf_ptr != NULL) {
