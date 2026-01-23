@@ -10,7 +10,7 @@ else
 	CC ?= $(CROSS_COMPILE)gcc
 endif
 
-CFLAGS ?= -g -Wall -Werror
+CFLAGS ?= -g -Wall -Werror -DUSE_AESD_CHAR_DEVICE=1
 
 LDFLAGS ?= -lpthread -lrt
 

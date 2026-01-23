@@ -74,6 +74,12 @@ char* timer_buffer;
 pthread_t timer_thread;
 slist_data_t *datap;
 SLIST_HEAD(slisthead, slist_data_s) head;
+
+#ifdef USE_AESD_CHAR_DEVICE
+	char output_path[512] = "/dev/aesdchar";
+#else
+	char output_path[512] = "/var/tmp/aesdsocketdata";
+#endif
 // Thread function for recv and send, wrapped here
 /**
  * This structure should be dynamically allocated and passed as
