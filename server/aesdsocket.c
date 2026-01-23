@@ -244,15 +244,18 @@ void* timer_threadfunc(void* thread_param)
 			struct tm *current_time = localtime(&now);	
 			start = now;
 			pthread_mutex_lock(thrd_mutex); // perfrom mutex lock so other threads can't work		
-			// write the packet to file
-			file = fopen(output_path, "a+");// use append mode	
-			//if (file == NULL) {
-			//	perror("fopen failed");
-			//	return 1;
-			//}	
 			strftime(timer_buffer, buffer_len, "%Y-%m-%d %H:%M:%S \n", current_time);
-			fprintf(file, "timestamp:%s",timer_buffer);
-			fclose(file);		
+			#ifndef USE_AESD_CHAR_DEVICE
+				// write the packet to file
+				file = fopen(output_path, "a+");// use append mode	
+				//if (file == NULL) {
+				//	perror("fopen failed");
+				//	return 1;
+				//}	
+				
+				fprintf(file, "timestamp:%s",timer_buffer);
+				fclose(file);		
+			#endif
 			pthread_mutex_unlock(thrd_mutex); // release mutex lock so other threads may work
 		}
 		
@@ -269,10 +272,8 @@ void signal_handler(int sig) {
 		exit_threads = 1;		
 		//if (timer_buffer != NULL) {
 		//	free(timer_buffer);
-		//}
-		#ifndef USE_AESD_CHAR_DEVICE
-			pthread_join(timer_thread, NULL);
-		#endif
+		//}	
+		pthread_join(timer_thread, NULL);
 		SLIST_FOREACH(datap, &head, entries) {
 			pthread_join(datap->thread_id, NULL); // end the thread
 		}
@@ -388,19 +389,17 @@ int main(int argc, char* argv[]) {
 	// Set up the mutex	
 	pthread_mutex_t mutex;
 	pthread_mutex_init(&mutex, NULL);
-
-	#ifndef USE_AESD_CHAR_DEVICE
-		// start a time stamp writing thread
-		time_t time_start;
-		time(&time_start);
-		
-		// Set up thread_data
-		struct timer_thread_data* timer_thrd_data = (struct timer_thread_data*) malloc(sizeof(struct timer_thread_data));	
-		timer_thrd_data->mutex = &mutex;	
-		timer_thrd_data->time_start = &time_start;
-		timer_thrd_data->exit_threads = &exit_threads;		
-		pthread_create(&timer_thread, NULL, timer_threadfunc, timer_thrd_data); // start a timer thread
-	#endif
+	
+	// start a time stamp writing thread
+	time_t time_start;
+	time(&time_start);
+	
+	// Set up thread_data
+	struct timer_thread_data* timer_thrd_data = (struct timer_thread_data*) malloc(sizeof(struct timer_thread_data));	
+	timer_thrd_data->mutex = &mutex;	
+	timer_thrd_data->time_start = &time_start;
+	timer_thrd_data->exit_threads = &exit_threads;		
+	pthread_create(&timer_thread, NULL, timer_threadfunc, timer_thrd_data); // start a timer thread
 
 	while(!exit_threads) {
 		int acceptedfd; // TODO: return -1 if any of the connect steps fail
