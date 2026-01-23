@@ -72,25 +72,25 @@ const char *aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
 	buffer->entry[buffer->in_offs] = *add_entry; // write or overwrites the oldest entry
 	// check if the current in_offs is the last one
 	if (buffer->in_offs == (AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED-1)) {
-		printk("Reached the full buffer state, roll the next entry to be the 0th entry.");
+		//printk("Reached the full buffer state, roll the next entry to be the 0th entry.");
 		buffer->full = true;
 		buffer->in_offs = 0;
 	} 
 	else {
-		printk("Move to the next entry for future write.");
+		//printk("Move to the next entry for future write.");
 		buffer->in_offs += 1;
 	}
 	if (buffer->full == true) { // Buffer already full, advances buffer->out_offs to the new start location
-		printk("Since buffer is full, need to update the read entry to the next write entry.");
+		//printk("Since buffer is full, need to update the read entry to the next write entry.");
 		buffer->out_offs = buffer->in_offs;	
 	}	
 
 	if (entry_bufptr_backup != NULL) {
-		printk("Returned the overwritten entry's buffer for dynamic removal.");
+		//printk("Returned the overwritten entry's buffer for dynamic removal.");
 		return entry_bufptr_backup; // return this entry to be replace for dynamic removal
 	}
 	else {
-		printk("Not yet overitten any previous entry. Return NULL.");
+		//printk("Not yet overitten any previous entry. Return NULL.");
 		return NULL;	
 	}	
 	return NULL; // By default
