@@ -63,7 +63,7 @@ const char *aesd_circular_buffer_add_entry(struct aesd_circular_buffer *buffer, 
     */
 	const char *entry_bufptr_backup; 
 	if (buffer->full == true) { // if the buffer is full before the actual write, take a backup of the overiten entry buffer.
-		entry_bufptr_backup = buffer->entry[buffer->in_offs]->buffptr;	
+		entry_bufptr_backup = buffer->entry[buffer->in_offs].buffptr;	
 	}
 	else {
 		entry_bufptr_backup = NULL;
