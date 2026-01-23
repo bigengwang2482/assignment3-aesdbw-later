@@ -142,7 +142,7 @@ void* threadfunc(void* thread_param)
 	if (valid_packet) {		
 		line_break[1]='\0'; // Replace the breakline with null	
 		// write the packet to file
-		file = fopen("/var/tmp/aesdsocketdata", "a+");// use append mode	
+		file = fopen(output_path, "a+");// use append mode	
 		if (file == NULL) {
 			perror("fopen failed");
 			return NULL;
@@ -157,7 +157,7 @@ void* threadfunc(void* thread_param)
 	pthread_mutex_unlock(thrd_mutex); // release mutex lock so other threads may work
 	// Load full content of /var/tmp/aesdsocketdata to client, and send back to client
 	
-	file = fopen("/var/tmp/aesdsocketdata", "rb");// use append mode	
+	file = fopen(output_path, "rb");// use append mode	
 	if (fseek(file,0, SEEK_END)	 != 0) {
 		fclose(file);
 		return NULL;
@@ -243,9 +243,9 @@ void* timer_threadfunc(void* thread_param)
 			if (time_diff >= TIME_STAMP_INTERVAL) {
 			struct tm *current_time = localtime(&now);	
 			start = now;
-			pthread_mutex_lock(thrd_mutex); // perfrom mutex lock so other threads can't work	
+			pthread_mutex_lock(thrd_mutex); // perfrom mutex lock so other threads can't work		
 			// write the packet to file
-			file = fopen("/var/tmp/aesdsocketdata", "a+");// use append mode	
+			file = fopen(output_path, "a+");// use append mode	
 			//if (file == NULL) {
 			//	perror("fopen failed");
 			//	return 1;
@@ -270,7 +270,9 @@ void signal_handler(int sig) {
 		//if (timer_buffer != NULL) {
 		//	free(timer_buffer);
 		//}
-		pthread_join(timer_thread, NULL);
+		#ifndef USE_AESD_CHAR_DEVICE
+			pthread_join(timer_thread, NULL);
+		#endif
 		SLIST_FOREACH(datap, &head, entries) {
 			pthread_join(datap->thread_id, NULL); // end the thread
 		}
@@ -287,8 +289,9 @@ void signal_handler(int sig) {
 		//if (bytes_buffer != NULL) {
 		//	free(bytes_buffer);
 		//}
-		
-		remove("/var/tmp/aesdsocketdata");	
+		#ifndef USE_AESD_CHAR_DEVICE
+			remove(output_path);	
+		#endif
 		exit(0);
 	}
 
@@ -386,17 +389,18 @@ int main(int argc, char* argv[]) {
 	pthread_mutex_t mutex;
 	pthread_mutex_init(&mutex, NULL);
 
-	// start a time stamp writing thread
-	time_t time_start;
-	time(&time_start);
-	
-	// Set up thread_data
-	struct timer_thread_data* timer_thrd_data = (struct timer_thread_data*) malloc(sizeof(struct timer_thread_data));	
-	timer_thrd_data->mutex = &mutex;	
-	timer_thrd_data->time_start = &time_start;
-	timer_thrd_data->exit_threads = &exit_threads;		
-	pthread_create(&timer_thread, NULL, timer_threadfunc, timer_thrd_data); // start a timer thread
-
+	#ifndef USE_AESD_CHAR_DEVICE
+		// start a time stamp writing thread
+		time_t time_start;
+		time(&time_start);
+		
+		// Set up thread_data
+		struct timer_thread_data* timer_thrd_data = (struct timer_thread_data*) malloc(sizeof(struct timer_thread_data));	
+		timer_thrd_data->mutex = &mutex;	
+		timer_thrd_data->time_start = &time_start;
+		timer_thrd_data->exit_threads = &exit_threads;		
+		pthread_create(&timer_thread, NULL, timer_threadfunc, timer_thrd_data); // start a timer thread
+	#endif
 
 	while(!exit_threads) {
 		int acceptedfd; // TODO: return -1 if any of the connect steps fail
