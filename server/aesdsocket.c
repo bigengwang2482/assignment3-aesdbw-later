@@ -165,7 +165,7 @@ void* threadfunc(void* thread_param)
 		file_for_read = fopen(output_path,"rb");
 		while (fgets(bytes_buffer+total_read, buffer_len, file_for_read)) { //for the device, use partial read mode	
 			read_size = strlen(bytes_buffer)-total_read; // the read size is the difference
-			printf("Read in %d chars.", read_size);
+			printf("Read in %d chars.\n", read_size);
 			total_read = strlen(bytes_buffer); // updated the total read.
 		}
 		fclose(file_for_read);	
@@ -261,17 +261,15 @@ void* timer_threadfunc(void* thread_param)
 			start = now;
 			pthread_mutex_lock(thrd_mutex); // perfrom mutex lock so other threads can't work		
 			strftime(timer_buffer, buffer_len, "%Y-%m-%d %H:%M:%S \n", current_time);
-			#ifndef USE_AESD_CHAR_DEVICE
-				// write the packet to file
-				file = fopen(output_path, "a+");// use append mode	
-				//if (file == NULL) {
-				//	perror("fopen failed");
-				//	return 1;
-				//}	
-				
-				fprintf(file, "timestamp:%s",timer_buffer);
-				fclose(file);		
-			#endif
+			// write the packet to file
+			file = fopen(output_path, "a+");// use append mode	
+			//if (file == NULL) {
+			//	perror("fopen failed");
+			//	return 1;
+			//}	
+			
+			fprintf(file, "timestamp:%s",timer_buffer);
+			fclose(file);		
 			pthread_mutex_unlock(thrd_mutex); // release mutex lock so other threads may work
 		}
 		
@@ -289,7 +287,9 @@ void signal_handler(int sig) {
 		//if (timer_buffer != NULL) {
 		//	free(timer_buffer);
 		//}	
-		pthread_join(timer_thread, NULL);
+		#ifndef USE_AESD_CHAR_DEVICE
+			pthread_join(timer_thread, NULL);
+		#endif
 		SLIST_FOREACH(datap, &head, entries) {
 			pthread_join(datap->thread_id, NULL); // end the thread
 		}
@@ -405,18 +405,19 @@ int main(int argc, char* argv[]) {
 	// Set up the mutex	
 	pthread_mutex_t mutex;
 	pthread_mutex_init(&mutex, NULL);
-	
-	// start a time stamp writing thread
-	time_t time_start;
-	time(&time_start);
-	
-	// Set up thread_data
-	struct timer_thread_data* timer_thrd_data = (struct timer_thread_data*) malloc(sizeof(struct timer_thread_data));	
-	timer_thrd_data->mutex = &mutex;	
-	timer_thrd_data->time_start = &time_start;
-	timer_thrd_data->exit_threads = &exit_threads;		
-	pthread_create(&timer_thread, NULL, timer_threadfunc, timer_thrd_data); // start a timer thread
 
+	#ifndef USE_AESD_CHAR_DEVICE	
+		// start a time stamp writing thread
+		time_t time_start;
+		time(&time_start);
+		
+		// Set up thread_data
+		struct timer_thread_data* timer_thrd_data = (struct timer_thread_data*) malloc(sizeof(struct timer_thread_data));	
+		timer_thrd_data->mutex = &mutex;	
+		timer_thrd_data->time_start = &time_start;
+		timer_thrd_data->exit_threads = &exit_threads;		
+		pthread_create(&timer_thread, NULL, timer_threadfunc, timer_thrd_data); // start a timer thread
+	#endif
 	while(!exit_threads) {
 		int acceptedfd; // TODO: return -1 if any of the connect steps fail
 		acceptedfd = accept(server_fd, &client_addr, &addrlen); // Use accpt_fd to read and write for our socket
