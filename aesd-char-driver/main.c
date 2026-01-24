@@ -144,11 +144,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	}
 	// Now add the finished entry to the circular buffer
 	if (ready_to_add_entry) {
-		const char *overwritten_buf_ptr;		
-		if (dev->buf == NULL) {
-			PDEBUG("Init buffer memory dynamically.");
-			dev->buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
-		}
+		const char *overwritten_buf_ptr;			
 		overwritten_buf_ptr = aesd_circular_buffer_add_entry(dev->buf, dev->working_buf_etr);	
 		retval = count;//dev->working_done_count;
 		PDEBUG("Added the entry to the buffer.");
@@ -213,6 +209,10 @@ int aesd_init_module(void)
      */
 
 	// Start of the assignment TODO code	
+	if (aesd_device.buf == NULL) {
+		PDEBUG("Init buffer memory dynamically.");
+		aesd_device.buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
+	}
 	mutex_init(&aesd_device.lock); // Set the mutex lock
 	// End of the assignment TODO code
 
@@ -234,14 +234,17 @@ void aesd_cleanup_module(void)
     /**
      * TODO: cleanup AESD specific poritions here as necessary
      */
-	// Start of the assignment TODO code
-	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now
+	// Start of the assignment TODO code	
 	//kfree(&aesd_device.buf);
-	uint8_t index;	
- 	struct aesd_buffer_entry *free_entry;
- 	AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
-       kfree(free_entry->buffptr);
+	if (aesd_device.buf != NULL) {
+		PDEBUG("Clean buffer memory dynamically.");		
+		uint8_t index;	
+ 		struct aesd_buffer_entry *free_entry;
+ 		AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
+    	   kfree(free_entry->buffptr);
+		}
 	}
+	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
 	// End of the assignment TODO code
     
 	unregister_chrdev_region(devno, 1);
