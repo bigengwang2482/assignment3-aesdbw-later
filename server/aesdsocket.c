@@ -273,7 +273,7 @@ void* timer_threadfunc(void* thread_param)
 			//	return 1;
 			//}	
 			
-			fprintf(file, "timestamp:%s",timer_buffer);
+			fprintf(file, "timestamp_XXXXX:%s",timer_buffer);
 			fclose(file);		
 			pthread_mutex_unlock(thrd_mutex); // release mutex lock so other threads may work
 		}
