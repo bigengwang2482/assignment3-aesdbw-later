@@ -161,6 +161,10 @@ void* threadfunc(void* thread_param)
 		int read_size=0;	
 		int total_read = 0;
 		FILE* file_for_read;
+		if (bytes_buffer != NULL) {	
+			free(bytes_buffer);
+			bytes_buffer = NULL;	
+		} // clear buffer just in case it got poluted like by the timestap
 		bytes_buffer = (char*) malloc(sizeof(char) * buffer_len);
 		file_for_read = fopen(output_path,"rb");
 		while (fgets(bytes_buffer+total_read, buffer_len, file_for_read)) { //for the device, use partial read mode	
@@ -213,6 +217,7 @@ void* threadfunc(void* thread_param)
     return NULL;
 }
 
+#ifndef USE_AESD_CHAR_DEVICE
 
 struct timer_thread_data{
     /*
@@ -279,6 +284,7 @@ void* timer_threadfunc(void* thread_param)
 	// Load full content of /var/tmp/aesdsocketdata to client, and send back to client
     return NULL;
 }
+#endif
 
 void signal_handler(int sig) {
 	if ((sig == SIGINT) || (sig == SIGTERM) ) {
