@@ -311,7 +311,7 @@ void signal_handler(int sig) {
 		//if (bytes_buffer != NULL) {
 		//	free(bytes_buffer);
 		//}
-		#if USE_AESD_CHAR_DEVICE == 1
+		#if USE_AESD_CHAR_DEVICE != 1
 			remove(output_path);	
 		#endif
 		exit(0);
