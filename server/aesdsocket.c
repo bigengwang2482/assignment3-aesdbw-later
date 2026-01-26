@@ -266,16 +266,18 @@ void* timer_threadfunc(void* thread_param)
 			start = now;
 			pthread_mutex_lock(thrd_mutex); // perfrom mutex lock so other threads can't work		
 			strftime(timer_buffer, buffer_len, "%Y-%m-%d %H:%M:%S \n", current_time);
-			// write the packet to file
-			file = fopen(output_path, "a+");// use append mode	
-			//if (file == NULL) {
-			//	perror("fopen failed");
-			//	return 1;
-			//}	
 			#if USE_AESD_CHAR_DEVICE != 1
+				// write the packet to file
+				file = fopen(output_path, "a+");// use append mode	
+				//if (file == NULL) {
+				//	perror("fopen failed");
+				//	return 1;
+				//}	
+				
 				fprintf(file, "timestamp:%s",timer_buffer);
+				fclose(file);
 			#endif
-			fclose(file);		
+					
 			pthread_mutex_unlock(thrd_mutex); // release mutex lock so other threads may work
 		}
 		
