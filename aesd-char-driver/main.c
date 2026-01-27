@@ -241,10 +241,13 @@ void aesd_cleanup_module(void)
 		uint8_t index;	
  		struct aesd_buffer_entry *free_entry;
  		AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
-    	   kfree(free_entry->buffptr);
+			if (free_entry->buffptr != NULL) { // only free when it's kmalloced
+				kfree(free_entry->buffptr);
+			}
 		}
 	}
-	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
+	kfree(&aesd_device.lock); // Free the initialized lock as well
+	//mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
 	// End of the assignment TODO code
     
 	unregister_chrdev_region(devno, 1);
