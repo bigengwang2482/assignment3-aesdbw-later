@@ -246,7 +246,7 @@ void aesd_cleanup_module(void)
 			}
 		}
 	}
-	kfree(&aesd_device.lock); // Free the initialized lock as well
+	//kfree(&aesd_device.lock); // Free the initialized lock as well
 	//mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
 	// End of the assignment TODO code
     
