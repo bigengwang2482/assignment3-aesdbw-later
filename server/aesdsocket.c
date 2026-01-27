@@ -127,7 +127,7 @@ void* threadfunc(void* thread_param)
 	// get the locked mutex from arg for unlock later
 	pthread_mutex_t* thrd_mutex = thread_func_args->mutex;	
 	pthread_mutex_lock(thrd_mutex); // perfrom mutex lock so other threads can't work
-	size_t buffer_len=100000;// 1000000000; too large	
+	size_t buffer_len=1024; //100000;// 1000000000; too large	
 	bytes_buffer = (char*) malloc(sizeof(char)*buffer_len);
 	recv(thread_func_args->acceptedfd, bytes_buffer, buffer_len, 0);	
 	
