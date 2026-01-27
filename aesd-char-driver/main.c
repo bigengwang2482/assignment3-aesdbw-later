@@ -242,8 +242,11 @@ void aesd_cleanup_module(void)
 		uint8_t index;	
  		struct aesd_buffer_entry *free_entry;
  		AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
-			if (free_entry->buffptr != NULL) { // only free when it's kmalloced
-				kfree(free_entry->buffptr);
+			if (free_entry != NULL) // the entry is initialized
+			{
+				if (free_entry->buffptr != NULL) { // only free when the entry's data buffer kmalloced
+					kfree(free_entry->buffptr);
+				}
 			}
 		}
 	}
