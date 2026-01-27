@@ -158,7 +158,7 @@ void* threadfunc(void* thread_param)
 	// Load full content of /var/tmp/aesdsocketdata to client, and send back to client
 
 	#if USE_AESD_CHAR_DEVICE == 1
-		int read_size=0;	
+		//int read_size=0;	
 		int total_read = 0;
 		FILE* file_for_read;
 		if (bytes_buffer != NULL) {	
@@ -167,11 +167,8 @@ void* threadfunc(void* thread_param)
 		} // clear buffer just in case it got poluted like by the timestap
 		bytes_buffer = (char*) malloc(sizeof(char) * buffer_len);
 		file_for_read = fopen(output_path,"rb");
-		while (fgets(bytes_buffer+total_read, buffer_len, file_for_read)) { //for the device, use partial read mode	
-			read_size = strlen(bytes_buffer)-total_read; // the read size is the difference
-			printf("Read in %d chars.\n", read_size);
-			total_read = strlen(bytes_buffer); // updated the total read.
-		}
+		total_read = fread(bytes_buffer, sizeof(char), buffer_len, file_for_read); // use fread for trying partial read like cat
+		printf("Successfully Read in %d chars.\n", total_read);
 		fclose(file_for_read);	
 		buffer_len = total_read; 
 
