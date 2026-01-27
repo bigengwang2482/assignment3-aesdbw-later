@@ -236,18 +236,19 @@ void aesd_cleanup_module(void)
      */
 	// Start of the assignment TODO code	
 	//kfree(&aesd_device.buf);
+	mutex_lock_interruptible(&aesd_device.lock); // Get the mutex for protection
 	if (aesd_device.buf != NULL) {
 		PDEBUG("Clean buffer memory dynamically.");		
-		//uint8_t index;	
- 		//struct aesd_buffer_entry *free_entry;
- 		//AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
-		//	if (free_entry->buffptr != NULL) { // only free when it's kmalloced
-		//		kfree(free_entry->buffptr);
-		//	}
-		//}
+		uint8_t index;	
+ 		struct aesd_buffer_entry *free_entry;
+ 		AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
+			if (free_entry->buffptr != NULL) { // only free when it's kmalloced
+				kfree(free_entry->buffptr);
+			}
+		}
 	}
 	//kfree(&aesd_device.lock); // Free the initialized lock as well
-	//mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
+	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
 	// End of the assignment TODO code
     
 	unregister_chrdev_region(devno, 1);
