@@ -158,6 +158,7 @@ void* threadfunc(void* thread_param)
 	// Load full content of /var/tmp/aesdsocketdata to client, and send back to client
 
 	#if USE_AESD_CHAR_DEVICE == 1
+		pthread_mutex_lock(thrd_mutex); // perfrom mutex lock so other threads can't work
 		//int read_size=0;	
 		int total_read = 0;
 		FILE* file_for_read;
@@ -165,13 +166,19 @@ void* threadfunc(void* thread_param)
 			free(bytes_buffer);
 			bytes_buffer = NULL;	
 		} // clear buffer just in case it got poluted like by the timestap
-		bytes_buffer = (char*) malloc(sizeof(char) * buffer_len);
+		bytes_buffer = (char*) malloc(sizeof(char) * 64);
 		file_for_read = fopen(output_path,"rb");
-		total_read = fread(bytes_buffer, sizeof(char), buffer_len, file_for_read); // use fread for trying partial read like cat
-		printf("Successfully Read in %d chars.\n", total_read);
+		total_read = fread(bytes_buffer, sizeof(char), 64, file_for_read); // use fread for trying partial read like cat
+		//printf("Successfully Read in %d chars.\n", total_read);
 		fclose(file_for_read);	
 		buffer_len = total_read; 
-
+		// Send the buffer to client
+		send(thread_func_args->acceptedfd, bytes_buffer, buffer_len, 0);	
+		if (bytes_buffer != NULL) {	
+			free(bytes_buffer);
+			bytes_buffer = NULL;	
+		}
+		pthread_mutex_unlock(thrd_mutex); // release mutex lock so other threads may work
 	#else
 		file = fopen(output_path, "rb");// use append mode	
 		if (fseek(file,0, SEEK_END)	 != 0) {
@@ -194,20 +201,17 @@ void* threadfunc(void* thread_param)
 		fseek(file, 0, SEEK_SET);
 		fread(bytes_buffer, sizeof(char), file_size, file);
 		fclose(file);
+		// Send the buffer to client
+		send(thread_func_args->acceptedfd, bytes_buffer, buffer_len, 0);	
+		if (bytes_buffer != NULL) {	
+			free(bytes_buffer);
+			bytes_buffer = NULL;	
+		}
 	#endif
 					
-	// Send the buffer to client
-	send(thread_func_args->acceptedfd, bytes_buffer, buffer_len, 0);	
-	if (bytes_buffer != NULL) {	
-		free(bytes_buffer);
-		bytes_buffer = NULL;	
-	}
+	
 	//syslog(LOG_DEBUG, "Closed connection from %s", client_addr.sa_data);
-		
-	if (bytes_buffer != NULL) {	
-		free(bytes_buffer);
-		bytes_buffer = NULL;	
-	}	
+	
 	// Label the thread complete
 	*(thread_func_args->complete)=true;
 	free(thread_func_args);
