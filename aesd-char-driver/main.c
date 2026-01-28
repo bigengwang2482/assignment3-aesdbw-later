@@ -209,11 +209,22 @@ int aesd_init_module(void)
      */
 
 	// Start of the assignment TODO code	
+	mutex_init(&aesd_device.lock); // Set the mutex lock	
+	mutex_lock_interruptible(&aesd_device.lock); // Get the mutex for protection
+	//Init buffer memory dynamically
 	if (aesd_device.buf == NULL) {
 		PDEBUG("Init buffer memory dynamically.");
 		aesd_device.buf=kmalloc(sizeof(struct aesd_circular_buffer), GFP_KERNEL);
 	}
-	mutex_init(&aesd_device.lock); // Set the mutex lock
+	//initialize the buffer entries	
+	PDEBUG("Initialize buffer entries.");		
+	uint8_t index;	
+ 	struct aesd_buffer_entry *init_entry;
+ 	AESD_CIRCULAR_BUFFER_FOREACH(init_entry,aesd_device.buf,index) {
+		init_entry->buffptr=NULL;
+		init_entry->size=0;	
+	}	
+	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
 	// End of the assignment TODO code
 
     result = aesd_setup_cdev(&aesd_device);
@@ -240,15 +251,15 @@ void aesd_cleanup_module(void)
 	PDEBUG("Clean buffer memory dynamically.");		
 	uint8_t index;	
  	struct aesd_buffer_entry *free_entry;
- 	AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {
-		if (free_entry != NULL) {
-			if (free_entry->buffptr != NULL) { // only free when the entry's data buffer kmalloced
-						kfree(free_entry->buffptr);
-				}
+ 	AESD_CIRCULAR_BUFFER_FOREACH(free_entry,aesd_device.buf,index) {	
+		if (free_entry->buffptr != NULL) { // only free when the entry's data buffer kmalloced
+					kfree(free_entry->buffptr);
 			}
 	}
-	//kfree(&aesd_device.lock); // Free the initialized lock as well
-	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now	
+	kfree(aesd_device.buf); // Free the dynamically allocated buffer
+	mutex_unlock(&aesd_device.lock);	// Make sure the mutex lock is unlocked in the read/write, write this for now
+	//kfree(&aesd_device.lock); // No need to free the initialized lock since it's not a dynamically alloced
+		
 	// End of the assignment TODO code
     
 	unregister_chrdev_region(devno, 1);
