@@ -220,9 +220,9 @@ void* threadfunc(void* thread_param)
 			free(bytes_buffer);
 			bytes_buffer = NULL;	
 		} // clear buffer just in case it got poluted like by the timestap
-		bytes_buffer = (char*) malloc(sizeof(char) * 64);
+		bytes_buffer = (char*) malloc(sizeof(char) * 1024);
 		file_for_read = fopen(output_path,"rb");
-		total_read = fread(bytes_buffer, sizeof(char), 64, file_for_read); // use fread for trying partial read like cat
+		total_read = fread(bytes_buffer, sizeof(char), 1024, file_for_read); // use fread for trying partial read like cat
 		//printf("Successfully Read in %d chars.\n", total_read);
 		fclose(file_for_read);	
 		buffer_len = total_read; 
