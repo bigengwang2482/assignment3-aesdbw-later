@@ -11,6 +11,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include "queue.h"  // Use implemented linked list
+#include "../aesd-char-driver/aesd_ioctl.h"  // Use the shared ioctl header
 
 #define NUM_THREADS 10
 #define TIME_STAMP_INTERVAL 10
@@ -143,14 +144,64 @@ void* threadfunc(void* thread_param)
 	}
 	if (valid_packet) {		
 		line_break[1]='\0'; // Replace the breakline with null	
-		// write the packet to file
-		file = fopen(output_path, "a+");// use append mode	
-		if (file == NULL) {
-			perror("fopen failed");
-			return NULL;
-		}	
-		fprintf(file, "%s",packet_head);
-		fclose(file);	
+		uint8_t write_cmd, write_cmd_offset; // additional command pattern for ioctl
+		if (sscanf(bytes_buffer, "AESDCHAR_IOCSEEKTO:%hhd,%hhd", &write_cmd, &write_cmd_offset) == 2) {
+			printf("Found special command for char ioctl\n");
+			#if USE_AESD_CHAR_DEVICE == 1	
+				printf("Has set to use the char device for ioctl\n");
+				// get the locked mutex from arg for unlock later
+				pthread_mutex_t* thrd_ioctl_mutex = thread_func_args->mutex;	
+				pthread_mutex_lock(thrd_ioctl_mutex); // perfrom mutex lock so other threads can't work
+				
+				// Setup and send the ioctl to device
+				struct aesd_seekto seekto;
+				seekto.write_cmd = write_cmd;
+				seekto.write_cmd_offset = write_cmd_offset;
+				FILE* dev_file; // the file for dev communication
+				dev_file = fopen(output_path, "a+");// use append mode to open the device	
+				int dev_fd = fileno(dev_file); // get the file descriptor of the device file
+				int result_ret = ioctl(dev_fd,AESDCHAR_IOCSEEKTO, &seekto); // send the ioctl to the device
+				printf("Returned from the ioctl with status %d", result_ret); //check the status	
+
+				// Request the content of the device immediately back with a read 
+				int total_read = 0;	
+				if (bytes_buffer != NULL) {	
+					free(bytes_buffer);
+					bytes_buffer = NULL;	
+				} // clear buffer just in case it got poluted like by the timestap
+				bytes_buffer = (char*) malloc(sizeof(char) * 1024);	
+				total_read = fread(bytes_buffer, sizeof(char), 1024, dev_file); // use fread for trying partial read like cat
+				//printf("Successfully Read in %d chars.\n", total_read);
+				fclose(dev_file);	
+				buffer_len = total_read; 
+				// Send the buffer to client
+				send(thread_func_args->acceptedfd, bytes_buffer, buffer_len, 0);	
+				if (bytes_buffer != NULL) {	
+					free(bytes_buffer);
+					bytes_buffer = NULL;	
+				} // clear the buffer to avoid misuse
+				pthread_mutex_unlock(thrd_ioctl_mutex); // release mutex lock so other threads may work
+			#else
+				printf("Has Not set to use the char device for ioctl, treat it as normal write\n");
+				// write the packet to file
+				file = fopen(output_path, "a+");// use append mode	
+				if (file == NULL) {
+					perror("fopen failed");
+					return NULL;
+				}	
+				fprintf(file, "%s",packet_head);
+				fclose(file);	
+				#endif		
+		} else {
+			// write the packet to file
+			file = fopen(output_path, "a+");// use append mode	
+			if (file == NULL) {
+				perror("fopen failed");
+				return NULL;
+			}	
+			fprintf(file, "%s",packet_head);
+			fclose(file);	
+		}
 	}	
 	if (bytes_buffer != NULL) {	
 		free(bytes_buffer);
