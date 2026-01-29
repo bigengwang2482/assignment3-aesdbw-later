@@ -212,13 +212,93 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 
     return retval;
 }
+
+/**
+ * Adjust the file offset (f_pos) parameter of @param filp based on the location specified by 
+ * @param write_cmd (the zero referenced command to locate)
+ * and @param write_cmd_offset (the zero referenced offset into the command)
+ * @return 0 if succesfful, negative if error occurred:
+ * 		-ERESTARTSYS if mutex could not be obtained
+ *		-EINVAL if write command or write_cmd_offset was out of range
+ */
+static long aesd_adjust_file_offset(struct file *filp, unsigned int write_cmd, unsigned int write_cmd_offset)
+{
+	ssize_t retval = 0; 
+    /**
+     * TODO: handle write
+     */
+	// Start of the assignment TODO code
+	struct aesd_dev *dev = filp->private_data; 	
+
+	if (mutex_lock_interruptible(&dev->lock)) // Get the mutex for protection
+		return -ERESTARTSYS;
+	PDEBUG("Obtained mutex for write.");
+	PDEBUG("Updating filp->f_pos according to abs write_cmd index: %d, with in-cmd write_cmd_offset %d",write_cmd, write_cmd_offset);
+	PDEBUG("Loop over the whole circular buffer and check the write cmd %d and write_cmd_offset%d", write_cmd, write_cmd_offset);
+	uint8_t index;	
+	uint8_t index_from_out;
+ 	struct aesd_buffer_entry *free_entry;
+	uint8_t size_from_out = 0;
+	uint8_t total_command_avail_size = 0; //reset the total size value	
+ 	AESD_CIRCULAR_BUFFER_FOREACH(free_entry,dev->buf,index) {	
+		index_since_out = (index -  dev->buf.out_offs + AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; // The index of the entry from the out offset.	
+		if (free_entry->buffptr != NULL) { // only search when the entry's data buffer(command) is kmalloced
+					total_command_avail_size += 1;		
+					// check if the current one is the correctr command entry requested
+					if (index == write_cmd) {
+						PDEBUG("Found the non-empty command entry that is requested with abs index %d!", index);
+						if (write_cmd_offset < (free_entry->size)) {
+							PDEBUG("Found that the requested in-cmd write_cmd_offset %d is valid!(<cmd_size=%d)", write_cmd_offset, free_entry->size);
+							filp->fpos += 0; //TODO: fix this in the next commit 
+							PDEBUG("Reset the filp->fpos to be %d", (filp->fpos));
+						} else {
+							PDEBUG("ERROR: Found that the requested in-cmd write_cmd_offset %d is NOT valid!( >=cmd_size=%d)", write_cmd_offset, free_entry->size);	
+							retval = -EINVAL; 
+							goto out;
+						}
+					}	
+			}
+	}
+	out:
+		mutex_unlock(&dev->lock);
+		return retval;
+	// End of the assignment TODO code
+    return retval;
+}
+
+long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+{
+	int retval = 0;
+	// Some checks following scull example
+	if (_IOC_TYPE(cmd) != AESD_IOC_MAGIC) return -ENOTTY;
+	if (_IOC_NR(cmd) > AESD_IOC_MAXNR) return -ENOTTY;
+
+	switch (cmd) {
+
+		case AESDCHAR_IOCSEEKTO:
+		{
+			struct aesd_seekto seekto;
+			if(copy_from_user(&seek_to, (const void __user *)arg, sizeof(seekto)) != 0 ) {
+				retval = EFAULT;
+			} else {
+				retval = aesd_adjust_file_offset(filp, seekto.write_cmd, seekto.write_cmd_offset);
+			}
+			break;
+		} 
+
+	}
+	return retval;
+}
+
+
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
 	.llseek =   aesd_llseek,	
     .read =     aesd_read,
     .write =    aesd_write,
+	.unlocked_ioctl = aesd_ioctl;
     .open =     aesd_open,
-    .release =  aesd_release,
+    .release =  aesd_release,	
 };
 
 static int aesd_setup_cdev(struct aesd_dev *dev)
