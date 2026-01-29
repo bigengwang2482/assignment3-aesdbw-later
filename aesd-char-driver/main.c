@@ -18,13 +18,25 @@
 #include <linux/cdev.h>
 #include <linux/fs.h> // file_operations
 #include "aesdchar.h"
+#include "aesd_ioctl.h"
 int aesd_major =   0; // use dynamic major
 int aesd_minor =   0;
-
+loff_t total_circular_buffer_size = 0; // A global variable to store the total circular buffer size
 MODULE_AUTHOR("Bigeng Wang"); /** TODO: fill in your name **/
 MODULE_LICENSE("Dual BSD/GPL");
 
 struct aesd_dev aesd_device;
+
+loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
+{
+	//TODO: UPDATE THE DRAFT BELOW	
+	loff_t newpos;	
+	newpos = fixed_size_llseek(filp, off, whence, total_circular_buffer_size); //Use the total circular buffer size as the 'fixed' size
+	if (newpos < 0) return -EINVAL;
+	filp->f_pos = newpos; //Update the f_pos from the original filepointer
+	return newpos;
+	//END OF THE IMPLEMENTATION DRAFT
+}
 
 int aesd_open(struct inode *inode, struct file *filp)
 {
@@ -169,6 +181,7 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 }
 struct file_operations aesd_fops = {
     .owner =    THIS_MODULE,
+	.llseek =   aesd_llseek,	
     .read =     aesd_read,
     .write =    aesd_write,
     .open =     aesd_open,
