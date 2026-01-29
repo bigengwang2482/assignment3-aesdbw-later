@@ -30,11 +30,40 @@ struct aesd_dev aesd_device;
 loff_t aesd_llseek(struct file *filp, loff_t off, int whence)
 {
 	//TODO: UPDATE THE DRAFT BELOW	
-	loff_t newpos;	
+	ssize_t retval = 0;
+	loff_t newpos;
+    PDEBUG("llseek: filp->f_pos:%lld, offset: %lld, whence: %d",filp->f_pos, off, whence);
+ 	// start locking 
+	struct aesd_dev *dev = filp->private_data; 	
+	if (mutex_lock_interruptible(&dev->lock)) // Get the mutex for protection
+		return -ERESTARTSYS;
+	PDEBUG("Obtained mutex for read.");	
+	PDEBUG("Update the total circular buffer size in mutex, from %lld", total_circular_buffer_size);
+	uint8_t index;	
+ 	struct aesd_buffer_entry *free_entry;
+	total_circular_buffer_size = 0; //reset the total size value
+ 	AESD_CIRCULAR_BUFFER_FOREACH(free_entry,dev->buf,index) {	
+		if (free_entry->buffptr != NULL) { // only free when the entry's data buffer kmalloced
+					total_circular_buffer_size += free_entry->size;
+			}
+	}
+	PDEBUG("Update the total circular buffer size in mutex to be %lld.", total_circular_buffer_size);	
 	newpos = fixed_size_llseek(filp, off, whence, total_circular_buffer_size); //Use the total circular buffer size as the 'fixed' size
-	if (newpos < 0) return -EINVAL;
-	filp->f_pos = newpos; //Update the f_pos from the original filepointer
-	return newpos;
+	PDEBUG("fixed_size_llseek: found newpos at %lld.", newpos);	
+	if (newpos < 0) {
+		retval = -EINVAL;
+		goto out;
+	} else {
+		filp->f_pos = newpos; //Update the f_pos from the original filepointer
+		retval = newpos;
+		goto out;
+	}	
+
+	out:
+		mutex_unlock(&dev->lock);
+		return retval;
+
+	return retval;
 	//END OF THE IMPLEMENTATION DRAFT
 }
 
@@ -95,7 +124,7 @@ ssize_t aesd_read(struct file *filp, char __user *buf, size_t count,
 		else {
 			PDEBUG("copy_to_user successfully.");		
 			*f_pos += retval;// updated the f_pos to the begining of next entry
-			PDEBUG("Update the next entry with offset %lld after read in %lld in", *f_pos, retval);
+			PDEBUG("Update the next entry with offset(*f_pos +=) %lld after read in %lld in", *f_pos, retval);
 			goto out;
 		}
 	}
@@ -152,6 +181,8 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 	else {
 		PDEBUG("Didn't find the end of the write command. Keep waiting for new write to the entry.");
 		retval = count;//dev->working_done_count; 
+		*f_pos += retval;// updated the f_pos to work with the llseek
+		PDEBUG("Also update the f_pos value with *f_pos +=  %lld.", retval);
 		goto out;
 	}
 	// Now add the finished entry to the circular buffer
@@ -169,7 +200,9 @@ ssize_t aesd_write(struct file *filp, const char __user *buf, size_t count,
 		dev->working_buf_etr = NULL;	
 		PDEBUG("Reset the working done  count to 0.");
 		dev->working_done_count = 0;
-		PDEBUG("Done write! unlock now and return with value %lld.", retval);
+		PDEBUG("Done write! unlock now and return with value %lld.", retval);	
+		*f_pos += retval;// updated the f_pos to work with the llseek
+		PDEBUG("Also update the f_pos value with *f_pos +=  %lld.", retval);
 		goto out;
 	}
 	out:
