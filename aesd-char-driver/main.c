@@ -235,22 +235,28 @@ static long aesd_adjust_file_offset(struct file *filp, unsigned int write_cmd, u
 	PDEBUG("Obtained mutex for write.");
 	PDEBUG("Updating filp->f_pos according to abs write_cmd index: %d, with in-cmd write_cmd_offset %d",write_cmd, write_cmd_offset);
 	PDEBUG("Loop over the whole circular buffer and check the write cmd %d and write_cmd_offset%d", write_cmd, write_cmd_offset);
-	uint8_t index;	
-	uint8_t index_from_out;
+	uint8_t index;		
  	struct aesd_buffer_entry *free_entry;
 	uint8_t size_from_out = 0;
-	uint8_t total_command_avail_size = 0; //reset the total size value	
- 	AESD_CIRCULAR_BUFFER_FOREACH(free_entry,dev->buf,index) {	
-		index_since_out = (index -  dev->buf.out_offs + AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; // The index of the entry from the out offset.	
+	uint8_t n_total_command_avail = 0; //reset the total size value	
+ 	for (uint8_t i_entry_since_out = 0; i_entry_since_out <  AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; i_entry_since_out++) {
+		index = (i_entry_since_out + (dev->buf)->out_offs) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; // The offset is from the out offset, index is the absolute index from 0	
+		free_entry=&((dev->buf)->entry[index]); // set the entry pointer for easier operations
 		if (free_entry->buffptr != NULL) { // only search when the entry's data buffer(command) is kmalloced
-					total_command_avail_size += 1;		
+					//Record number of available entries
+					n_total_command_avail += 1;
+					//accumulate the offset size from the out
+					size_from_out += free_entry->size;		
 					// check if the current one is the correctr command entry requested
-					if (index == write_cmd) {
+					if (i_entry_since_out == write_cmd) {
 						PDEBUG("Found the non-empty command entry that is requested with abs index %d!", index);
 						if (write_cmd_offset < (free_entry->size)) {
 							PDEBUG("Found that the requested in-cmd write_cmd_offset %d is valid!(<cmd_size=%d)", write_cmd_offset, free_entry->size);
-							filp->fpos += 0; //TODO: fix this in the next commit 
-							PDEBUG("Reset the filp->fpos to be %d", (filp->fpos));
+							size_from_out += write_cmd_offset;
+							filp->f_pos = size_from_out; //Update the fpos relative the the current out entry(starting point) 
+							PDEBUG("Reset the filp->fpos to be %d from the out", (filp->f_pos));
+							retval = 0; //for successful return
+							goto out;
 						} else {
 							PDEBUG("ERROR: Found that the requested in-cmd write_cmd_offset %d is NOT valid!( >=cmd_size=%d)", write_cmd_offset, free_entry->size);	
 							retval = -EINVAL; 
@@ -259,6 +265,15 @@ static long aesd_adjust_file_offset(struct file *filp, unsigned int write_cmd, u
 					}	
 			}
 	}
+
+	// Check if beyond the available commands
+	if (write_cmd > n_total_command_avail) {
+		PDEBUG("We have %d commands in buffer, while the requested %dth cmd is beyond the range.",n_total_command_avail, write_cmd);
+		retval = -EINVAL;
+		goto out;	
+	}
+
+	// the out 
 	out:
 		mutex_unlock(&dev->lock);
 		return retval;
@@ -271,14 +286,14 @@ long aesd_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	int retval = 0;
 	// Some checks following scull example
 	if (_IOC_TYPE(cmd) != AESD_IOC_MAGIC) return -ENOTTY;
-	if (_IOC_NR(cmd) > AESD_IOC_MAXNR) return -ENOTTY;
+	if (_IOC_NR(cmd) > AESDCHAR_IOC_MAXNR) return -ENOTTY;
 
 	switch (cmd) {
 
 		case AESDCHAR_IOCSEEKTO:
 		{
 			struct aesd_seekto seekto;
-			if(copy_from_user(&seek_to, (const void __user *)arg, sizeof(seekto)) != 0 ) {
+			if(copy_from_user(&seekto, (const void __user *)arg, sizeof(seekto)) != 0 ) {
 				retval = EFAULT;
 			} else {
 				retval = aesd_adjust_file_offset(filp, seekto.write_cmd, seekto.write_cmd_offset);
@@ -296,7 +311,7 @@ struct file_operations aesd_fops = {
 	.llseek =   aesd_llseek,	
     .read =     aesd_read,
     .write =    aesd_write,
-	.unlocked_ioctl = aesd_ioctl;
+	.unlocked_ioctl = aesd_ioctl,
     .open =     aesd_open,
     .release =  aesd_release,	
 };
