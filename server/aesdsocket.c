@@ -181,6 +181,10 @@ void* threadfunc(void* thread_param)
 					bytes_buffer = NULL;	
 				} // clear the buffer to avoid misuse
 				pthread_mutex_unlock(thrd_ioctl_mutex); // release mutex lock so other threads may work
+				// Label the thread complete
+				*(thread_func_args->complete)=true;
+				free(thread_func_args);
+			    return NULL; // directly return here
 			#else
 				printf("Has Not set to use the char device for ioctl, treat it as normal write\n");
 				// write the packet to file
