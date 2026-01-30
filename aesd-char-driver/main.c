@@ -243,26 +243,26 @@ static long aesd_adjust_file_offset(struct file *filp, unsigned int write_cmd, u
 		index = (i_entry_since_out + (dev->buf)->out_offs) % AESDCHAR_MAX_WRITE_OPERATIONS_SUPPORTED; // The offset is from the out offset, index is the absolute index from 0	
 		free_entry=&((dev->buf)->entry[index]); // set the entry pointer for easier operations
 		if (free_entry->buffptr != NULL) { // only search when the entry's data buffer(command) is kmalloced
-					//Record number of available entries
-					n_total_command_avail += 1;
-					//accumulate the offset size from the out
-					size_from_out += free_entry->size;		
-					// check if the current one is the correctr command entry requested
-					if (i_entry_since_out == write_cmd) {
-						PDEBUG("Found the non-empty command entry that is requested with abs index %d!", index);
-						if (write_cmd_offset < (free_entry->size)) {
-							PDEBUG("Found that the requested in-cmd write_cmd_offset %d is valid!(<cmd_size=%d)", write_cmd_offset, free_entry->size);
-							size_from_out += write_cmd_offset;
-							filp->f_pos = size_from_out; //Update the fpos relative the the current out entry(starting point) 
-							PDEBUG("Reset the filp->fpos to be %d from the out", (filp->f_pos));
-							retval = 0; //for successful return
-							goto out;
-						} else {
-							PDEBUG("ERROR: Found that the requested in-cmd write_cmd_offset %d is NOT valid!( >=cmd_size=%d)", write_cmd_offset, free_entry->size);	
-							retval = -EINVAL; 
-							goto out;
-						}
-					}	
+				//Record number of available entries
+				n_total_command_avail += 1;		
+				// check if the current one is the correctr command entry requested
+				if (i_entry_since_out == write_cmd) {
+					PDEBUG("Found the non-empty command entry that is requested with abs index %d!", index);
+					if (write_cmd_offset < (free_entry->size)) {
+						PDEBUG("Found that the requested in-cmd write_cmd_offset %d is valid!(<cmd_size=%d)", write_cmd_offset, free_entry->size);
+						size_from_out += write_cmd_offset;
+						filp->f_pos = size_from_out; //Update the fpos relative the the current out entry(starting point) 
+						PDEBUG("Reset the filp->fpos to be %d from the out", (filp->f_pos));
+						retval = 0; //for successful return
+						goto out;
+					} else {
+						PDEBUG("ERROR: Found that the requested in-cmd write_cmd_offset %d is NOT valid!( >=cmd_size=%d)", write_cmd_offset, free_entry->size);	
+						retval = -EINVAL; 
+						goto out;
+					}
+				}
+				//accumulate the offset size from the out for the next entry
+				size_from_out += free_entry->size;	
 			}
 	}
 
